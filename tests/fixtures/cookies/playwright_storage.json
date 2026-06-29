@@ -1,0 +1,14 @@
+{
+  "cookies": [
+    {
+      "name": "session",
+      "value": "abc123",
+      "domain": ".example.com",
+      "path": "/",
+      "secure": true,
+      "httpOnly": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

@@ -1,0 +1,5 @@
+name: bad
+seeds:
+  - https://example.com/
+crawl:
+  max_page: 50   # typo: should be max_pages

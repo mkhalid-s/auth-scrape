@@ -1,0 +1,19 @@
+[
+  {
+    "name": "session",
+    "value": "xyz789",
+    "domain": ".example.com",
+    "path": "/",
+    "secure": true,
+    "httpOnly": true,
+    "sameSite": "lax",
+    "expirationDate": 1893456000.0
+  },
+  {
+    "name": "tracking",
+    "value": "t123",
+    "domain": "example.com",
+    "path": "/",
+    "sameSite": "no_restriction"
+  }
+]

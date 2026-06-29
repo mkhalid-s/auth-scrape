@@ -1,0 +1,31 @@
+name: confluence-example
+description: Atlassian Confluence space (replace TENANT and SPACE).
+
+seeds:
+  - https://TENANT.atlassian.net/wiki/spaces/SPACE/overview
+
+crawl:
+  allow_prefixes:
+    - https://TENANT.atlassian.net/wiki/spaces/SPACE/
+  deny_prefixes:
+    - https://TENANT.atlassian.net/wiki/spaces/SPACE/page/edit
+  max_pages: 1000
+  delay_seconds: 1.0
+
+auth:
+  cookie_domains:
+    - atlassian.net
+    - atlassian.com
+    - id.atlassian.com
+
+extract:
+  content_selectors:
+    - "main#content"
+    - "[data-testid='content-area']"
+    - .wiki-content
+    - main
+  strip_inline_svg: true
+
+output:
+  dir: output/confluence-example
+  combined: combined.md

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auth-scrape"
+version = "0.1.0"
+description = "Crawl auth-walled sites via your browser session and produce LLM-ready markdown."
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+readme = "README.md"
+dependencies = [
+    "playwright>=1.40,<2",
+    "markdownify>=0.11,<1",
+    "beautifulsoup4>=4.12,<5",
+    "lxml>=4.9,<6",
+    "PyYAML>=6.0,<7",
+    "httpx>=0.27,<1",
+]
+
+[project.optional-dependencies]
+host-cookies = ["browser-cookie3>=0.19,<1"]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "respx>=0.21",
+]
+
+[project.scripts]
+auth-scrape = "authscrape.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/mkhalid-s/auth-scrape"
+Issues = "https://github.com/mkhalid-s/auth-scrape/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+authscrape = ["profiles/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

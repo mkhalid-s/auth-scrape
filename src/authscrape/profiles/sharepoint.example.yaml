@@ -1,0 +1,31 @@
+name: sharepoint-example
+description: SharePoint Online site (replace TENANT and SITE).
+
+seeds:
+  - https://TENANT.sharepoint.com/sites/SITE/SitePages/Home.aspx
+
+crawl:
+  allow_prefixes:
+    - https://TENANT.sharepoint.com/sites/SITE/
+  deny_prefixes:
+    - https://TENANT.sharepoint.com/sites/SITE/_layouts/
+  max_pages: 500
+  delay_seconds: 1.0
+
+auth:
+  cookie_domains:
+    - sharepoint.com
+    - microsoftonline.com
+    - microsoft.com
+    - live.com
+
+extract:
+  content_selectors:
+    - "[data-automation-id='CanvasZone']"
+    - "div#contentRow"
+    - main
+  strip_inline_svg: true
+
+output:
+  dir: output/sharepoint-example
+  combined: combined.md

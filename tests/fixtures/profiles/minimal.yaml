@@ -1,0 +1,4 @@
+name: minimal
+description: minimal-valid profile for tests
+seeds:
+  - https://example.com/docs/

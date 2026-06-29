@@ -1,0 +1,28 @@
+name: notion-example
+description: Notion workspace (replace WORKSPACE_ID / page IDs).
+
+seeds:
+  - https://www.notion.so/WORKSPACE_ID/Root-Page-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+crawl:
+  allow_hosts:
+    - www.notion.so
+    - notion.so
+  max_pages: 500
+  delay_seconds: 1.5  # Notion rate-limits aggressively
+
+auth:
+  cookie_domains:
+    - notion.so
+
+extract:
+  # Notion's main content area is heavily dynamic; these selectors may need tuning.
+  content_selectors:
+    - .notion-page-content
+    - "[data-block-id]"
+    - main
+  strip_inline_svg: true
+
+output:
+  dir: output/notion-example
+  combined: combined.md

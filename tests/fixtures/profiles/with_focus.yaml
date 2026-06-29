@@ -1,0 +1,27 @@
+name: with-focus
+description: profile that exercises focus + search blocks
+seeds:
+  - https://example.com/docs/
+crawl:
+  allow_hosts:
+    - example.com
+  max_pages: 50
+  delay_seconds: 0.5
+auth:
+  cookie_domains:
+    - example.com
+focus:
+  keywords:
+    - widget
+    - workflow
+  min_score: 1.0
+  drilldown_depth: 1
+  save: matched_only
+search:
+  url_template: "https://example.com/search?q={query}"
+  result_selector: "a.result"
+  queries:
+    - widget
+output:
+  dir: output/with-focus
+  combined: combined.md
