@@ -47,7 +47,7 @@ def test_allow_prefix_from_seed_root():
 
 
 def test_validate_name_accepts_valid():
-    validate_name("ai-connect")
+    validate_name("team-docs")
     validate_name("ai_connect")
     validate_name("foo123")
 

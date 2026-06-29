@@ -90,3 +90,11 @@ def test_run_doctor_returns_appropriate_exit_code(tmp_path: Path, capsys):
     assert rc in (0, 1, 2)
     captured = capsys.readouterr().out
     assert "Checking auth-scrape environment" in captured
+
+
+def test_run_doctor_strict_treats_warnings_as_failure(tmp_path: Path, capsys):
+    rc = run_doctor(tmp_path / "nope.json", [tmp_path], strict=True)
+
+    assert rc == 2
+    captured = capsys.readouterr().out
+    assert "Strict mode" in captured or "failure(s)" in captured

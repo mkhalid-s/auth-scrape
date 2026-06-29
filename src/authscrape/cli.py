@@ -100,9 +100,79 @@ def _cmd_cookies(args) -> int:
     return 0
 
 
+def _print_run_plan(
+    profile: Profile,
+    *,
+    cookies_path: Path,
+    out_dir: Path,
+    state_path: Path,
+    max_pages: int | None,
+    resume: bool,
+    no_crawl: bool,
+    headed: bool,
+    redact_secrets: bool,
+) -> None:
+    cap = max_pages if max_pages is not None else profile.crawl.max_pages
+    print("auth-scrape run dry run")
+    print("=" * 50)
+    print(f"Profile:        {profile.name}")
+    print(f"Description:    {profile.description or '(none)'}")
+    print(f"Seeds:          {len(profile.seeds)}")
+    for seed in profile.seeds:
+        print(f"  - {seed}")
+    print(f"Allow hosts:    {profile.crawl.allow_hosts or '(none)'}")
+    print(f"Allow prefixes: {profile.crawl.allow_prefixes or '(none)'}")
+    print(f"Deny prefixes:  {profile.crawl.deny_prefixes or '(none)'}")
+    print(f"Cookies:        {cookies_path}")
+    print(f"Output:         {out_dir}")
+    print(f"State:          {state_path}")
+    print(f"Cap:            {cap} pages")
+    print(f"Delay:          {profile.crawl.delay_seconds}s")
+    print(f"Engine:         {profile.crawl.engine}")
+    print(f"Resume:         {resume}")
+    print(f"No crawl:       {no_crawl}")
+    print(f"Headed:         {headed}")
+    print(f"Redact secrets: {redact_secrets}")
+    if profile.search.url_template and profile.search.queries:
+        print(f"Search:         {profile.search.url_template}")
+        print(f"Search queries: {profile.search.queries}")
+    else:
+        print("Search:         disabled")
+    if profile.focus.enabled:
+        print(f"Focus keywords: {profile.focus.keywords}")
+        print(f"Focus min:      {profile.focus.min_score}")
+        print(f"Focus depth:    {profile.focus.drilldown_depth}")
+        print(f"Focus save:     {profile.focus.save}")
+    else:
+        print("Focus:          disabled")
+
+
 def _cmd_run(args) -> int:
     profile = _resolve_profile(args.profile)
     cookies_path = Path(args.cookies)
+    out_dir = Path(args.out or profile.output.dir)
+    state_path = Path(args.state or out_dir / "state.json")
+    if args.dry_run:
+        _print_run_plan(
+            profile,
+            cookies_path=cookies_path,
+            out_dir=out_dir,
+            state_path=state_path,
+            max_pages=args.max_pages,
+            resume=args.resume,
+            no_crawl=args.no_crawl,
+            headed=args.headed,
+            redact_secrets=args.redact_secrets,
+        )
+        return 0
+    if not args.i_have_authorization:
+        print(
+            "Refusing to crawl without explicit authorization confirmation.\n"
+            "Only crawl sites you are authorized to access and automate.\n"
+            "Re-run with: --i-have-authorization",
+            file=sys.stderr,
+        )
+        return 2
     if not cookies_path.exists():
         print(
             f"Cookie file not found: {cookies_path}\n"
@@ -110,8 +180,6 @@ def _cmd_run(args) -> int:
             file=sys.stderr,
         )
         return 1
-    out_dir = Path(args.out or profile.output.dir)
-    state_path = Path(args.state or out_dir / "state.json")
     n = crawl(
         profile,
         cookies_path,
@@ -121,6 +189,7 @@ def _cmd_run(args) -> int:
         headed=args.headed,
         no_crawl=args.no_crawl,
         max_pages=args.max_pages,
+        redact_secrets=args.redact_secrets,
     )
     return 0 if n > 0 else 1
 
@@ -246,7 +315,7 @@ def _cmd_doctor(args) -> int:
     """Run environment diagnostics."""
     from .doctor import run_doctor
     cookies_path = Path(args.cookies)
-    return run_doctor(cookies_path, _profile_search_dirs())
+    return run_doctor(cookies_path, _profile_search_dirs(), strict=args.strict)
 
 
 def _cmd_setup(args) -> int:
@@ -340,6 +409,8 @@ def main(argv: list[str] | None = None) -> int:
         "doctor", help="Check environment, profiles, and cookies; print a report.",
     )
     p_doctor.add_argument("--cookies", default="cookies.json")
+    p_doctor.add_argument("--strict", action="store_true",
+                          help="Treat warnings as failures.")
     p_doctor.set_defaults(func=_cmd_doctor)
 
     p_setup = sub.add_parser(
@@ -408,6 +479,15 @@ def main(argv: list[str] | None = None) -> int:
                        help="Fetch only seeds; don't follow links.")
     p_run.add_argument("--headed", action="store_true",
                        help="Show the browser (debug auth).")
+    p_run.add_argument("--dry-run", action="store_true",
+                       help="Print planned scope without reading cookies or crawling.")
+    p_run.add_argument("--redact-secrets", action="store_true",
+                       help="Redact common secrets in saved markdown.")
+    p_run.add_argument(
+        "--i-have-authorization",
+        action="store_true",
+        help="Confirm you are authorized to crawl the target site.",
+    )
     p_run.set_defaults(func=_cmd_run)
 
     p_comb = sub.add_parser(

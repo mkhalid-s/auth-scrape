@@ -1,5 +1,9 @@
 # auth-scrape
 
+[![Tests](https://github.com/mkhalid-s/auth-scrape/actions/workflows/tests.yml/badge.svg)](https://github.com/mkhalid-s/auth-scrape/actions/workflows/tests.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
 Crawl auth-walled websites through your already-authenticated browser session and produce LLM-ready markdown. Designed for sites where you'd otherwise have to copy-paste pages by hand: documentation portals, Confluence, Notion, SharePoint, and private wikis behind SSO.
 
 Auth model: load cookies once from your host browser; the crawler reuses them through Playwright.
@@ -39,13 +43,25 @@ auth-scrape cookies mysite --browser chrome
 # → cookies.json
 
 # 3. Smoke-test then crawl
-auth-scrape run mysite --max-pages 5 --headed     # smoke test
-auth-scrape run mysite                            # full crawl
-auth-scrape run mysite --resume                   # if interrupted
+auth-scrape run mysite --dry-run                  # review scope first
+auth-scrape run mysite --max-pages 5 --headed --i-have-authorization
+auth-scrape run mysite --i-have-authorization
+auth-scrape run mysite --resume --i-have-authorization
 
 # 4. Concatenate into one big markdown file for LLM context
 auth-scrape combine mysite
 ```
+
+## Safety And Authorization
+
+Only crawl sites you are authorized to access and automate. Review each
+profile's `seeds`, `allow_hosts`, and `allow_prefixes` before running a crawl,
+and respect the target site's terms, rate limits, and robots or automation
+policies.
+
+`cookies.json`, browser cookie exports, `state/`, `output/`, and combined
+markdown files can contain live credentials or private content. Do not commit,
+publish, or share them unless you have reviewed and sanitized them.
 
 Profile arguments accept either a **bare name** (looked up on the search path) or **a path to a YAML file** — useful for one-off external profiles you don't want to install:
 
@@ -62,6 +78,7 @@ auth-scrape setup                      One-shot post-install: Chromium + system 
    --skip-system-deps                  Skip `playwright install-deps` on Linux.
 auth-scrape doctor                     Check Python/Playwright/Chromium/cookies/profiles.
    --cookies cookies.json
+   --strict                            Treat warnings as failures.
 auth-scrape list                       List available profiles.
 auth-scrape init <name>                Scaffold a new profile YAML.
    --site URL                          Seed URL (prompts if omitted).
@@ -84,6 +101,9 @@ auth-scrape run <profile>              Crawl using a profile.
    --resume                            Continue from prior state
    --no-crawl                          Fetch only seeds; don't follow
    --headed                            Show browser (debug auth)
+   --dry-run                           Print planned scope without crawling
+   --redact-secrets                    Redact common secrets in saved markdown
+   --i-have-authorization              Confirm you are allowed to crawl the target
 auth-scrape combine <profile>          Concatenate output/*.md → combined.md.
 auth-scrape search <profile>           Run profile.search queries; print harvested URLs.
    --cookies cookies.json
@@ -226,12 +246,28 @@ content extraction, and resume-state round-trip / corruption recovery.
 
 SSO sessions are short-lived. When pages start coming back as `! looks empty (... chars). Cookie expired?`, re-run `auth-scrape cookies <profile>` and then `auth-scrape run <profile> --resume`. The state file means you don't lose the work already done.
 
+## Rate Limits And Backoff
+
+Start with a small smoke test and conservative `crawl.delay_seconds`. If a site
+returns `429`, `503`, or other throttling responses, stop the crawl, increase
+the delay, lower `max_pages`, and resume only when appropriate.
+
 ## When extensions are blocked
 
 The `cookies` subcommand uses `browser-cookie3`, which reads cookies from the OS keystore — no browser extension needed. On Windows it's silent (DPAPI). On macOS you'll see a one-time Keychain prompt. On Linux it may unlock gnome-keyring.
 
 If even `pip install` is locked down on the host, fall back to manual export:
 - F12 → Application/Storage → Cookies → copy `name`, `value`, `domain`, `path` for the SSO + session cookies into `cookies.json`. The `cookies` schema accepts both Playwright `storage_state` and Cookie-Editor-style arrays.
+
+## Repository Settings
+
+Before inviting contributors or relying on this repository, enable these GitHub
+settings:
+
+- Secret scanning and push protection.
+- Dependabot alerts and security updates.
+- Branch protection for `main`.
+- Required status checks for the test workflow.
 
 ## Layout
 

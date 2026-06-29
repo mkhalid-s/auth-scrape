@@ -180,9 +180,13 @@ def _check_profiles(search_dirs) -> Check:
     return Check(OK, f"{len(profiles)} profile(s) found", detail)
 
 
-def run_doctor(cookies_path: Path, profile_search_dirs) -> int:
+def run_doctor(cookies_path: Path, profile_search_dirs, *, strict: bool = False) -> int:
     """Run all checks and print a report. Returns exit code:
-    0 = all OK, 1 = warnings only, 2 = at least one FAIL."""
+    0 = all OK, 1 = warnings only, 2 = at least one FAIL.
+
+    In strict mode, warnings also return 2 so CI/preflight checks can fail
+    closed when the environment is incomplete.
+    """
     checks = [
         _check_python(),
         _check_self(),
@@ -204,6 +208,9 @@ def run_doctor(cookies_path: Path, profile_search_dirs) -> int:
         print(f"{fails} failure(s), {warns} warning(s). Fix the failures and re-run.")
         return 2
     if warns:
+        if strict:
+            print(f"Strict mode: {warns} warning(s) treated as failure.")
+            return 2
         print(f"All required checks passed. {warns} warning(s) — review above.")
         return 1
     print("All systems go.")

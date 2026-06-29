@@ -18,7 +18,7 @@ from authscrape.config import (
     Profile,
     SearchConfig,
 )
-from authscrape.crawler import _run_bfs
+from authscrape.crawler import _run_bfs, redact_common_secrets
 from authscrape.fetcher import FetchResult
 
 
@@ -326,3 +326,44 @@ def test_run_bfs_focus_mode_only_saves_matched(tmp_path: Path):
     md_files = list((tmp_path / "out" / "md").glob("*.md"))
     assert len(md_files) == 1
     assert "widget" in md_files[0].read_text().lower()
+
+
+def test_redact_common_secrets_masks_known_shapes():
+    text = (
+        "Authorization: Bearer abcdefghijklmnopqrstuvwxyz\n"
+        "api_key = sk_test_abcdefghijklmnopqrstuvwxyz\n"
+        "-----BEGIN PRIVATE KEY-----\nabc123\n-----END PRIVATE KEY-----"
+    )
+
+    redacted = redact_common_secrets(text)
+
+    assert "abcdefghijklmnopqrstuvwxyz" not in redacted
+    assert "sk_test" not in redacted
+    assert "abc123" not in redacted
+    assert "[REDACTED]" in redacted
+
+
+def test_run_bfs_redacts_saved_markdown_when_enabled(tmp_path: Path):
+    secret = "tokentestabcdefghijklmnopqrstuvwxyz"
+    fetcher = FakeFetcher({
+        "https://x.test/a": _page(
+            "Secrets",
+            f"Configuration includes token = {secret} for testing only.",
+        ),
+    })
+    profile = _profile(["https://x.test/a"])
+
+    _run_bfs(
+        profile, fetcher,
+        out_dir=tmp_path / "out",
+        state_path=tmp_path / "state.json",
+        resume=False, no_crawl=False, max_pages=None,
+        cookies_path=tmp_path / "cookies.json",
+        redact_secrets=True,
+    )
+
+    md_files = list((tmp_path / "out" / "md").glob("*.md"))
+    assert len(md_files) == 1
+    content = md_files[0].read_text()
+    assert secret not in content
+    assert "token=[REDACTED]" in content

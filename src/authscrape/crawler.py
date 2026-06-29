@@ -31,6 +31,25 @@ from .search import harvest_search_urls
 from .state import State, make_item
 
 
+_SECRET_PATTERNS = [
+    re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),
+    re.compile(r"(?i)\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s`'\"<>]{6,})"),
+    re.compile(
+        r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+        re.DOTALL,
+    ),
+]
+
+
+def redact_common_secrets(text: str) -> str:
+    """Redact common secret shapes from generated markdown output."""
+    redacted = text
+    redacted = _SECRET_PATTERNS[0].sub(r"\1[REDACTED]", redacted)
+    redacted = _SECRET_PATTERNS[1].sub(r"\1=[REDACTED]", redacted)
+    redacted = _SECRET_PATTERNS[2].sub("[REDACTED PRIVATE KEY]", redacted)
+    return redacted
+
+
 def _slugify(url: str) -> str:
     """URL → filename-safe slug with a stable hash suffix.
 
@@ -112,6 +131,7 @@ def crawl(
     headed: bool = False,
     no_crawl: bool = False,
     max_pages: int | None = None,
+    redact_secrets: bool = False,
     fetcher: Fetcher | None = None,
 ) -> int:
     """Run a profile-driven crawl.
@@ -130,6 +150,7 @@ def crawl(
             no_crawl=no_crawl,
             max_pages=max_pages,
             cookies_path=cookies_path,
+            redact_secrets=redact_secrets,
         )
 
     storage = load_storage_state(cookies_path)
@@ -140,6 +161,7 @@ def crawl(
                 out_dir=out_dir, state_path=state_path,
                 resume=resume, no_crawl=no_crawl, max_pages=max_pages,
                 cookies_path=cookies_path,
+                redact_secrets=redact_secrets,
             )
     # default: playwright
     with PlaywrightFetcher(
@@ -156,6 +178,7 @@ def crawl(
             no_crawl=no_crawl,
             max_pages=max_pages,
             cookies_path=cookies_path,
+            redact_secrets=redact_secrets,
         )
 
 
@@ -169,6 +192,7 @@ def _run_bfs(
     no_crawl: bool,
     max_pages: int | None,
     cookies_path: Path,
+    redact_secrets: bool = False,
 ) -> int:
     """Pure crawl loop driven by a `Fetcher`. No Playwright dependency.
 
@@ -353,7 +377,10 @@ def _run_bfs(
                 if profile.focus.enabled:
                     front += f"score: {page_score:.2f}\nmatched: {matched}\n"
                 front += "---\n\n" + f"# {title}\n\n"
-                md_path.write_text(front + markdown + "\n", encoding="utf-8")
+                content = front + markdown + "\n"
+                if redact_secrets:
+                    content = redact_common_secrets(content)
+                md_path.write_text(content, encoding="utf-8")
                 index_entries.append(
                     (title or slug, url, md_path.relative_to(out_dir).as_posix())
                 )
